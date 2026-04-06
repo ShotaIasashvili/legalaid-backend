@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Scale of Justice -->
+  <g transform="translate(4,4)">
+    <!-- Balance beam -->
+    <rect x="8" y="2" width="8" height="2" fill="#1e40af"/>
+    <!-- Left scale -->
+    <rect x="6" y="4" width="4" height="6" fill="#374151"/>
+    <circle cx="8" cy="10" r="2" fill="#6b7280"/>
+    <!-- Right scale -->
+    <rect x="14" y="4" width="4" height="6" fill="#374151"/>
+    <circle cx="16" cy="10" r="2" fill="#6b7280"/>
+    <!-- Base -->
+    <rect x="4" y="12" width="16" height="2" fill="#1e40af"/>
+    <rect x="6" y="14" width="12" height="2" fill="#1e40af"/>
+    <!-- Support -->
+    <rect x="14" y="16" width="2" height="8" fill="#374151"/>
+  </g>
+</svg>
