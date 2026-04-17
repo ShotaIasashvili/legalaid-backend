@@ -10,7 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class VideoResource extends Resource
+class VideoResource extends AdminResource
 {
     protected static ?string $model = Video::class;
     protected static ?string $navigationIcon = 'heroicon-o-play-circle';

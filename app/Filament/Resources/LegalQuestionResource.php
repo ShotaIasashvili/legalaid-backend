@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LegalQuestionResource\Pages;
 use App\Models\LegalQuestion;
+use App\Services\AdminDashboardMetrics;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -11,7 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
-class LegalQuestionResource extends Resource
+class LegalQuestionResource extends AdminResource
 {
     protected static ?string $model = LegalQuestion::class;
     protected static ?string $navigationIcon  = 'heroicon-o-question-mark-circle';
@@ -22,7 +23,7 @@ class LegalQuestionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::count();
+        return app(AdminDashboardMetrics::class)->badge('legal_questions_total');
     }
 
     public static function form(Form $form): Form

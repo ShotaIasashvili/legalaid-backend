@@ -11,7 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
-class ServiceResource extends Resource
+class ServiceResource extends AdminResource
 {
     protected static ?string $model = Service::class;
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';

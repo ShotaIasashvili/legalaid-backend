@@ -10,10 +10,12 @@ class ServicesSeeder extends Seeder
 {
     public function run(): void
     {
+        $frontendPublicPath = rtrim((string) config('app.legacy_frontend_public_path', base_path('../legalaid2/public')), "\\/");
+
         // Prefer the full-content JSON; fall back to the basic one
-        $jsonPath = base_path('../legalaid2/public/seed-data/services-full.json');
+        $jsonPath = $frontendPublicPath . DIRECTORY_SEPARATOR . 'seed-data' . DIRECTORY_SEPARATOR . 'services-full.json';
         if (!file_exists($jsonPath)) {
-            $jsonPath = base_path('../legalaid2/public/seed-data/services.json');
+            $jsonPath = $frontendPublicPath . DIRECTORY_SEPARATOR . 'seed-data' . DIRECTORY_SEPARATOR . 'services.json';
         }
 
         if (!file_exists($jsonPath)) {

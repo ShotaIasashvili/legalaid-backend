@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->call([
+            HrUserSeeder::class,
             SettingsSeeder::class,
             StatsSeeder::class,
             ServicesSeeder::class,
@@ -42,6 +43,9 @@ class DatabaseSeeder extends Seeder
         $this->command->warn('⚠️  SECURITY: Change the admin password IMMEDIATELY at /admin!');
         $this->command->line('   Email   : admin@legalaid.ge');
         $this->command->line('   Password: LegalAid@2026!');
+        $this->command->newLine();
+        $this->command->line('   HR Email   : ' . HrUserSeeder::EMAIL);
+        $this->command->line('   HR Password: ' . HrUserSeeder::PASSWORD);
         $this->command->newLine();
     }
 }

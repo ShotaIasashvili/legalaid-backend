@@ -10,7 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class StatResource extends Resource
+class StatResource extends AdminResource
 {
     protected static ?string $model = Stat::class;
     protected static ?string $navigationIcon  = 'heroicon-o-chart-bar';

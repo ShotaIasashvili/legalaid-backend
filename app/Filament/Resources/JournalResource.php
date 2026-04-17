@@ -12,7 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
-class JournalResource extends Resource
+class JournalResource extends AdminResource
 {
     protected static ?string $model = Journal::class;
     protected static ?string $navigationIcon = 'heroicon-o-book-open';

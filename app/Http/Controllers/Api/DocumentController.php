@@ -7,7 +7,8 @@ use App\Models\Document;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class DocumentController extends Controller
 {
@@ -39,16 +40,35 @@ class DocumentController extends Controller
         ]));
     }
 
-    public function download(int $id): StreamedResponse
+    public function download(int $id): Response
     {
         $document = Document::findOrFail($id);
         $document->incrementDownloads();
 
-        abort_unless(Storage::disk('public')->exists($document->file_path), 404, 'File not found.');
+        $normalizedPath = $document->normalizedFilePath();
 
-        return Storage::disk('public')->download(
-            $document->file_path,
-            $document->file_name ?? basename($document->file_path)
-        );
+        if (filled($normalizedPath) && Storage::disk('public')->exists($normalizedPath)) {
+            return response()->download(
+                Storage::disk('public')->path($normalizedPath),
+                $document->file_name ?? basename($normalizedPath)
+            );
+        }
+
+        $legacyFilePath = $document->legacyPublicFilePath();
+
+        if ($legacyFilePath !== null) {
+            return response()->download(
+                $legacyFilePath,
+                $document->file_name ?? basename($legacyFilePath)
+            );
+        }
+
+        $frontendHostedFileUrl = $document->frontendHostedFileUrl();
+
+        if ($frontendHostedFileUrl !== null) {
+            return redirect()->away($frontendHostedFileUrl);
+        }
+
+        abort(404, 'File not found.');
     }
 }

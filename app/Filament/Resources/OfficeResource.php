@@ -4,13 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OfficeResource\Pages;
 use App\Models\Office;
+use App\Services\AdminDashboardMetrics;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class OfficeResource extends Resource
+class OfficeResource extends AdminResource
 {
     protected static ?string $model = Office::class;
     protected static ?string $navigationIcon = 'heroicon-o-map-pin';
@@ -350,7 +351,7 @@ class OfficeResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::count() ?: null;
+        return app(AdminDashboardMetrics::class)->badge('offices_total', hideZero: true);
     }
 }
 

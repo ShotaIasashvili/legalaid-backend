@@ -12,7 +12,8 @@ class PostSeeder extends Seeder
     public function run(): void
     {
         // Load from the existing posts.json in the frontend public folder
-        $jsonPath = base_path('../legalaid2/public/news-data/posts.json');
+        $frontendPublicPath = rtrim((string) config('app.legacy_frontend_public_path', base_path('../legalaid2/public')), "\\/");
+        $jsonPath = $frontendPublicPath . DIRECTORY_SEPARATOR . 'news-data' . DIRECTORY_SEPARATOR . 'posts.json';
 
         if (!file_exists($jsonPath)) {
             $this->command->warn("posts.json not found at: {$jsonPath}");

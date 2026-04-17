@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Post extends Model
 {
@@ -60,16 +62,115 @@ class Post extends Model
         return 'slug';
     }
 
+    public function getFeaturedImageUrlAttribute(): ?string
+    {
+        return static::resolveImageUrl($this->featured_image);
+    }
+
+    public function getFeaturedImageThumbnailUrlAttribute(): ?string
+    {
+        return static::resolveImageUrl($this->featured_image_thumbnail ?: $this->featured_image);
+    }
+
+    public function getFeaturedImagePopupUrlAttribute(): ?string
+    {
+        return static::resolveImageUrl($this->featured_image_popup ?: $this->featured_image);
+    }
+
+    public function getFeaturedImageSingleUrlAttribute(): ?string
+    {
+        return static::resolveImageUrl($this->featured_image_single ?: $this->featured_image);
+    }
+
+    public function getFeaturedImageWebpUrlAttribute(): ?string
+    {
+        return static::resolveImageUrl($this->featured_image_webp);
+    }
+
+    public function getOgImageUrlAttribute(): ?string
+    {
+        return static::resolveImageUrl($this->og_image ?: $this->featured_image_single ?: $this->featured_image);
+    }
+
+    public static function resolveImageUrl(?string $path): ?string
+    {
+        if (blank($path)) {
+            return null;
+        }
+
+        if (filter_var($path, FILTER_VALIDATE_URL) !== false || Str::startsWith($path, ['//', 'data:'])) {
+            return $path;
+        }
+
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        if (Storage::disk('public')->exists($normalizedPath)) {
+            return asset('storage/' . $normalizedPath);
+        }
+
+        if (is_file(public_path($normalizedPath))) {
+            return asset($normalizedPath);
+        }
+
+        if (static::legacyPublicAssetPath($normalizedPath) !== null) {
+            return url('/legacy-post-assets/' . $normalizedPath);
+        }
+
+        $frontendBaseUrl = static::frontendBaseUrl();
+
+        if (static::isLegacyPublicAsset($normalizedPath) && filled($frontendBaseUrl)) {
+            return rtrim($frontendBaseUrl, '/') . '/' . $normalizedPath;
+        }
+
+        return asset($normalizedPath);
+    }
+
+    public static function legacyPublicAssetPath(string $path): ?string
+    {
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+
+        if (! static::isLegacyPublicAsset($normalizedPath)) {
+            return null;
+        }
+
+        $legacyBasePath = realpath(config('app.legacy_frontend_public_path'));
+
+        if ($legacyBasePath === false) {
+            return null;
+        }
+
+        $candidatePath = $legacyBasePath . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalizedPath);
+        $resolvedPath = realpath($candidatePath);
+
+        if ($resolvedPath === false || ! str_starts_with($resolvedPath, $legacyBasePath . DIRECTORY_SEPARATOR) || ! is_file($resolvedPath)) {
+            return null;
+        }
+
+        return $resolvedPath;
+    }
+
+    protected static function isLegacyPublicAsset(string $path): bool
+    {
+        return Str::startsWith($path, 'news-assets/');
+    }
+
+    protected static function frontendBaseUrl(): ?string
+    {
+        return app()->environment('production')
+            ? config('app.frontend_prod_url')
+            : config('app.frontend_url');
+    }
+
     protected static function boot(): void
     {
         parent::boot();
 
         static::creating(function (Post $post) {
             if (empty($post->slug)) {
-                $post->slug = \Illuminate\Support\Str::slug($post->title);
+                $post->slug = Str::slug($post->title);
             }
             if (empty($post->excerpt) && $post->content) {
-                $post->excerpt = \Illuminate\Support\Str::limit(strip_tags($post->content), 200);
+                $post->excerpt = Str::limit(strip_tags($post->content), 200);
             }
         });
     }

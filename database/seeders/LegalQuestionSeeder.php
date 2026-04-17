@@ -9,7 +9,8 @@ class LegalQuestionSeeder extends Seeder
 {
     public function run(): void
     {
-        $jsonPath = base_path('../legalaid2/public/seed-data/legal-questions.json');
+        $frontendPublicPath = rtrim((string) config('app.legacy_frontend_public_path', base_path('../legalaid2/public')), "\\/");
+        $jsonPath = $frontendPublicPath . DIRECTORY_SEPARATOR . 'seed-data' . DIRECTORY_SEPARATOR . 'legal-questions.json';
 
         if (!file_exists($jsonPath)) {
             $this->command->warn("legal-questions.json not found at: {$jsonPath}");

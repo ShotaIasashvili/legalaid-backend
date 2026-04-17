@@ -4,13 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PageContentResource\Pages;
 use App\Models\PageContent;
+use App\Services\AdminDashboardMetrics;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class PageContentResource extends Resource
+class PageContentResource extends AdminResource
 {
     protected static ?string $model = PageContent::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-duplicate';
@@ -273,6 +274,6 @@ class PageContentResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::count() ?: null;
+        return app(AdminDashboardMetrics::class)->badge('page_contents_total', hideZero: true);
     }
 }

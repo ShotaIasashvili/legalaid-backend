@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\VacancyResource\Pages;
 use App\Models\Vacancy;
+use App\Services\AdminDashboardMetrics;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -315,8 +316,7 @@ class VacancyResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $open = static::getModel()::open()->count();
-        return $open > 0 ? (string) $open : null;
+        return app(AdminDashboardMetrics::class)->badge('vacancies_open', hideZero: true);
     }
 
     public static function getNavigationBadgeColor(): ?string

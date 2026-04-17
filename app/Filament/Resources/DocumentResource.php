@@ -11,7 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 
-class DocumentResource extends Resource
+class DocumentResource extends AdminResource
 {
     protected static ?string $model = Document::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';

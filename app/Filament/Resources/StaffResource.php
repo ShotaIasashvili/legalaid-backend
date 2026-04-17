@@ -12,7 +12,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 
-class StaffResource extends Resource
+class StaffResource extends AdminResource
 {
     protected static ?string $model = Staff::class;
     protected static ?string $navigationIcon = 'heroicon-o-users';

@@ -96,10 +96,10 @@ class PostController extends Controller
             'is_featured'  => $post->is_featured,
             'views'        => $post->views,
             // Image URLs
-            'featuredImage'          => $post->featured_image ? asset('storage/' . $post->featured_image) : null,
-            'featuredImageThumbnail' => $post->featured_image_thumbnail ? asset('storage/' . $post->featured_image_thumbnail) : null,
-            'featuredImagePopup'     => $post->featured_image_popup ? asset('storage/' . $post->featured_image_popup) : null,
-            'featuredImageWebp'      => $post->featured_image_webp ? asset('storage/' . $post->featured_image_webp) : null,
+            'featuredImage'          => $post->featured_image_url,
+            'featuredImageThumbnail' => $post->featured_image_thumbnail_url,
+            'featuredImagePopup'     => $post->featured_image_popup_url,
+            'featuredImageWebp'      => $post->featured_image_webp_url,
         ];
 
         if ($full) {
@@ -107,10 +107,9 @@ class PostController extends Controller
             $data['extra_images']   = $post->extra_images ?? [];
             $data['seo_title']      = $post->seo_title;
             $data['seo_description'] = $post->seo_description;
-            $data['og_image']       = $post->og_image ? asset('storage/' . $post->og_image) : null;
+            $data['og_image']       = $post->og_image_url;
             $data['source_url']     = $post->source_url;
-            $data['featuredImageSingle'] = $post->featured_image_single
-                ? asset('storage/' . $post->featured_image_single) : null;
+            $data['featuredImageSingle'] = $post->featured_image_single_url;
         }
 
         return $data;

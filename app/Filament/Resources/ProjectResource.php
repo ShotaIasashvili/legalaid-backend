@@ -13,7 +13,7 @@ use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-class ProjectResource extends Resource
+class ProjectResource extends AdminResource
 {
     protected static ?string $model = Project::class;
     protected static ?string $navigationIcon  = 'heroicon-o-rocket-launch';

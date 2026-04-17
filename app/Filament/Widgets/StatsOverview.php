@@ -2,48 +2,41 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Post;
-use App\Models\Vacancy;
-use App\Models\Document;
-use App\Models\Staff;
+use App\Services\AdminDashboardMetrics;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class StatsOverview extends BaseWidget
 {
+    protected static ?string $pollingInterval = null;
+
     protected function getStats(): array
     {
+        $metrics = app(AdminDashboardMetrics::class);
+
         return [
-            Stat::make('სიახლეები', Post::count())
+            Stat::make('სიახლეები', (string) $metrics->value('posts_total'))
                 ->description('სულ სიახლე')
                 ->descriptionIcon('heroicon-m-newspaper')
                 ->color('success')
-                ->chart([
-                    Post::whereDate('created_at', '>=', now()->subDays(7))->count(),
-                    Post::whereDate('created_at', '>=', now()->subDays(6))->count(),
-                    Post::whereDate('created_at', '>=', now()->subDays(5))->count(),
-                    Post::whereDate('created_at', '>=', now()->subDays(4))->count(),
-                    Post::whereDate('created_at', '>=', now()->subDays(3))->count(),
-                    Post::whereDate('created_at', '>=', now()->subDays(2))->count(),
-                    Post::whereDate('created_at', '>=', now()->subDays(1))->count(),
-                ]),
+                ->chart($metrics->postTrend()),
 
-            Stat::make('მონახაზები', Post::where('status', 'draft')->count())
+            Stat::make('მონახაზები', (string) $metrics->value('posts_drafts'))
                 ->description('გამოქვ. მოლოდინშია')
                 ->descriptionIcon('heroicon-m-pencil')
                 ->color('warning'),
 
-            Stat::make('დოკუმენტები', Document::count())
+            Stat::make('დოკუმენტები', (string) $metrics->value('documents_total'))
                 ->description('PDF / ფ.')
                 ->descriptionIcon('heroicon-m-document-text')
                 ->color('info'),
 
-            Stat::make('ვაკ. (ღია)', Vacancy::open()->count())
+            Stat::make('ვაკ. (ღია)', (string) $metrics->value('vacancies_open'))
                 ->description('ახ. ვაკ.')
                 ->descriptionIcon('heroicon-m-briefcase')
                 ->color('primary'),
 
-            Stat::make('თანამშრომლ.', Staff::where('is_active', true)->count())
+            Stat::make('თანამშრომლ.', (string) $metrics->value('staff_active'))
                 ->description('აქტ. პ.')
                 ->descriptionIcon('heroicon-m-users')
                 ->color('gray'),

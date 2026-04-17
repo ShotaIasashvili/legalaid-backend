@@ -6,6 +6,7 @@ use App\Filament\Components\ImagePreviewPanel;
 use App\Filament\Resources\PostResource\Pages;
 use App\Models\Post;
 use App\Models\Category;
+use App\Services\AdminDashboardMetrics;
 use App\Services\ImageService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -15,7 +16,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
-class PostResource extends Resource
+class PostResource extends AdminResource
 {
     protected static ?string $model = Post::class;
     protected static ?string $navigationIcon = 'heroicon-o-newspaper';
@@ -154,10 +155,10 @@ class PostResource extends Resource
                         Forms\Components\Placeholder::make('_preview_saved')
                             ->label('')
                             ->content(function ($record) {
-                                if (!$record?->featured_image_thumbnail) return '';
+                                if (!$record?->featured_image_thumbnail_url) return '';
                                 $items = [
-                                    ['Thumbnail (400×280)', $record->featured_image_thumbnail, '400/280'],
-                                    ['Popup (800×500)',     $record->featured_image_popup,     '800/500'],
+                                        ['Thumbnail (400×280)', $record->featured_image_thumbnail_url, '400/280'],
+                                        ['Popup (800×500)',     $record->featured_image_popup_url,     '800/500'],
                                 ];
                                 $html = '<div x-data="{tab:\'card\'}">';
                                 // Tab bar
@@ -175,13 +176,13 @@ class PostResource extends Resource
                                 $html .= '</div>';
 
                                 $sizes = [
-                                    'card'  => [$record->featured_image_thumbnail, '400×280', 'ბარათები', '400/280'],
-                                    'popup' => [$record->featured_image_popup,     '800×500', 'Gallery modal', '800/500'],
-                                    'hero'  => [$record->featured_image_single,    '1200×750','სიახლის გვერდი', '1200/750'],
-                                    'og'    => [$record->og_image ?? $record->featured_image_single, '1200×630', 'Social share', '1200/630'],
+                                    'card'  => [$record->featured_image_thumbnail_url, '400×280', 'ბარათები', '400/280'],
+                                    'popup' => [$record->featured_image_popup_url,     '800×500', 'Gallery modal', '800/500'],
+                                    'hero'  => [$record->featured_image_single_url,    '1200×750','სიახლის გვერდი', '1200/750'],
+                                    'og'    => [$record->og_image_url, '1200×630', 'Social share', '1200/630'],
                                 ];
                                 foreach ($sizes as $key => [$path, $dim, $desc, $ratio]) {
-                                    $url    = $path ? asset('storage/' . $path) : null;
+                                    $url = $path ?: null;
                                     $html .= "<div x-show=\"tab==='{$key}'\" x-cloak class='space-y-2'>";
                                     $html .= "<p class='text-xs text-gray-500 dark:text-gray-400'><strong>{$dim}</strong> — {$desc}</p>";
                                     if ($url) {
@@ -194,7 +195,7 @@ class PostResource extends Resource
                                 $html .= '</div>';
                                 return new \Illuminate\Support\HtmlString($html);
                             })
-                            ->visible(fn ($record) => $record?->featured_image_thumbnail !== null)
+                            ->visible(fn ($record) => $record?->featured_image_thumbnail_url !== null)
                             ->columnSpanFull(),
                     ]),
 
@@ -211,9 +212,8 @@ class PostResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('featured_image_thumbnail')
+                Tables\Columns\ImageColumn::make('featured_image_thumbnail_url')
                     ->label('ფოტო')
-                    ->disk('public')
                     ->width(80)
                     ->height(55),
 
@@ -297,7 +297,7 @@ class PostResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::where('status', 'draft')->count() ?: null;
+        return app(AdminDashboardMetrics::class)->badge('posts_drafts', hideZero: true);
     }
 
     public static function getNavigationBadgeColor(): ?string
