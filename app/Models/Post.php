@@ -103,6 +103,11 @@ class Post extends Model
         }
 
         $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+        $frontendBaseUrl = static::frontendBaseUrl();
+
+        if (static::isLegacyPublicAsset($normalizedPath) && filled($frontendBaseUrl)) {
+            return rtrim($frontendBaseUrl, '/') . '/' . $normalizedPath;
+        }
 
         if (Storage::disk('public')->exists($normalizedPath)) {
             return asset('storage/' . $normalizedPath);
@@ -114,12 +119,6 @@ class Post extends Model
 
         if (static::legacyPublicAssetPath($normalizedPath) !== null) {
             return url('/legacy-post-assets/' . $normalizedPath);
-        }
-
-        $frontendBaseUrl = static::frontendBaseUrl();
-
-        if (static::isLegacyPublicAsset($normalizedPath) && filled($frontendBaseUrl)) {
-            return rtrim($frontendBaseUrl, '/') . '/' . $normalizedPath;
         }
 
         return asset($normalizedPath);

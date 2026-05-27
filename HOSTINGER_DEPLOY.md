@@ -1,22 +1,61 @@
 # Hostinger Deployment
 
-Use [scripts/build-hostinger-package.ps1](scripts/build-hostinger-package.ps1) to generate a ZIP that can be extracted directly into `public_html`.
+This deployment flow now serves the public React site, the Laravel API, and the Filament admin panel from one `public_html` on one domain.
 
-The generated package has this structure:
+Default production domain:
+
+- `https://www.new.legalaid.ge`
+
+## Build The Package
+
+Build the frontend first so `legalaid2/dist` contains the current SPA build:
+
+```powershell
+Set-Location ..\legalaid2
+npm run build
+
+Set-Location ..\backend
+pwsh -File .\scripts\build-hostinger-package.ps1
+```
+
+PowerShell 5.1 also works:
+
+```powershell
+Set-Location ..\legalaid2
+npm run build
+
+Set-Location ..\backend
+.\scripts\build-hostinger-package.ps1
+```
+
+The script defaults both the public site and Laravel app to `https://www.new.legalaid.ge`.
+
+If `backend/.env` contains `DEPLOY_DB_HOST`, `DEPLOY_DB_PORT`, `DEPLOY_DB_DATABASE`, `DEPLOY_DB_USERNAME`, and `DEPLOY_DB_PASSWORD`, those values are copied into the packaged installer so `/install` opens with the production database already filled in.
+
+## Package Layout
 
 ```text
 public_html/
   .htaccess
+  index.html
   index.php
+  assets/
+  manifest.webmanifest
+  sw.js
   css/
   img/
   js/
+  news-assets/
+  news-data/
+  seed-data/
+  consultation-data/
   UPLOAD-FIRST.txt
   legalaid2/
     public/
       seed-data/
       news-data/
       news-assets/
+      legal-acts/
   laravel/
     app/
     bootstrap/
@@ -31,54 +70,50 @@ public_html/
     artisan
 ```
 
-Why this layout is used:
+## How Routing Works
 
-- The domain root keeps only the front controller and public assets.
-- The Laravel app itself stays in a subfolder.
-- When the sibling `legalaid2/public` folder exists locally, the package also bundles the frontend-exported seed data and legacy post assets into `public_html/legalaid2/public`.
-- Requests for `/storage/...` fall back to Laravel and are served from `storage/app/public`, so shared hosting does not need a symlink in `public_html`.
+- Public site routes are served by the React build in `public_html/index.html`.
+- `/api/*`, `/admin/*`, `/livewire/*`, `/sanctum/*`, `/storage/*`, `/legacy-post-assets/*`, and `/up` are sent to Laravel through `public_html/index.php`.
+- Static frontend files such as `assets/`, `manifest.webmanifest`, `sw.js`, `news-data/`, and `consultation-data/` are served directly from `public_html`.
+- The extra `public_html/legalaid2/public` folder is kept only for seeders and legacy data imports.
 
-Default package values:
+## Why This Layout
 
-- Backend URL: `https://powderblue-rhinoceros-805295.hostingersite.com`
-- Frontend URL: `https://lightgreen-caterpillar-796045.hostingersite.com`
+- Hostinger shared hosting expects the live site under `public_html`.
+- The React public site and Laravel backend stay on the same domain with no separate API host or subdomain.
+- Laravel itself still lives in a hidden `laravel/` subfolder, which keeps the app code out of the public web root.
+- `/storage/...` requests still fall back to Laravel, so no public symlink is required in `public_html`.
 
-Build the ZIP from the repo root:
+## After Uploading To Hostinger
 
-```powershell
-pwsh -File .\scripts\build-hostinger-package.ps1
-```
+1. Extract the ZIP directly into `public_html`.
+2. Ensure `laravel/storage` and `laravel/bootstrap/cache` are writable.
+3. Open the main domain or `/install`.
+4. Confirm the prefilled database settings and run the installer.
+5. After installation finishes, sign in at `/admin` and change the default password immediately.
 
-PowerShell 5.1 also works:
+## Runtime Defaults In The Package
 
-```powershell
-.\scripts\build-hostinger-package.ps1
-```
-
-After extraction on Hostinger:
-
-1. Edit `laravel/.env` and fill in `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and `APP_KEY`.
-2. Generate `APP_KEY` if it is empty.
-3. Ensure `laravel/storage` and `laravel/bootstrap/cache` are writable.
-4. Run migrations if the target database is empty.
-5. Run `php laravel/artisan db:seed --force` to import posts, services, legal questions, and documents when `public_html/legalaid2/public` is present.
-
-Hostinger package defaults:
-
+- `APP_URL=https://www.new.legalaid.ge`
+- `FRONTEND_URL=https://www.new.legalaid.ge`
+- `FRONTEND_PROD_URL=https://www.new.legalaid.ge`
 - `SESSION_DRIVER=file`
 - `CACHE_STORE=file`
 - `QUEUE_CONNECTION=sync`
 
-This avoids requiring database-backed cache/session tables or a queue worker on shared hosting.
+These defaults keep the deployment compatible with shared hosting without requiring database-backed sessions, cache tables, or a queue worker.
 
-Bundled legacy frontend data:
+The package also keeps `APP_KEY` in place so the installer can boot normally on first load, then writes the production database settings from the installer form before running migrations and seeds.
 
-- `seed-data` gives production seeders the real frontend services, legal questions, and document metadata.
-- `news-data/posts.json` gives production the real post content.
-- `news-assets` preserves legacy news images and attached post assets.
+## Notes
 
-If `/admin` loads but clicking Login returns a 500 error on `/livewire/update`, the most likely causes are:
+- In production, the React app should not set `VITE_API_URL`; it now falls back to the current origin and calls `/api/v1/...` on the same host.
+- The service worker is configured to leave `/admin`, `/api`, `/livewire`, `/sanctum`, `/storage`, and `/legacy-post-assets` under Laravel control instead of treating them like SPA routes.
 
-- `DB_HOST` is wrong for the Hostinger MySQL server
-- migrations were not run, so the `users` table does not exist
-- the server is still using an older `.env` with `CACHE_STORE=database`
+## Troubleshooting
+
+If `/admin` loads but Login fails on `/livewire/update`, the most common causes are:
+
+- `DB_HOST` is wrong for the Hostinger MySQL server.
+- the installer was not completed, so the `users` table does not exist yet.
+- the server is still using an older `.env` with `CACHE_STORE=database` or `SESSION_DRIVER=database`.

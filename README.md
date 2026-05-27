@@ -111,17 +111,42 @@ Password: LegalAid@2026!
 
 ## 🔗 Connecting the React Frontend
 
-In your `legalaid2` project, update the API base:
+For split local development, set `VITE_API_URL` in `legalaid2/.env.local`:
 
 ```typescript
-// src/lib/api.ts
-export const API_BASE = 'http://localhost:8000/api/v1';
-
-// Example: fetch latest news
-const posts = await fetch(`${API_BASE}/posts?per_page=5&category=სიახლეები`).then(r => r.json());
+VITE_API_URL=http://localhost:8000
 ```
 
-For production, set `FRONTEND_PROD_URL` in `.env` and configure your web server.
+For same-domain production, leave `VITE_API_URL` unset. The frontend now falls back to `window.location.origin` and calls `/api/v1/...` on the current host.
+
+The Hostinger package is built for one-domain deployment:
+
+- Public site: `https://www.new.legalaid.ge/`
+- API: `https://www.new.legalaid.ge/api/v1`
+- Admin: `https://www.new.legalaid.ge/admin`
+- First-run installer: `https://www.new.legalaid.ge/install`
+
+Build the React app first, then package the backend deployment ZIP:
+
+```powershell
+cd ..\legalaid2
+npm run build
+
+cd ..\backend
+.\scripts\build-hostinger-package.ps1
+```
+
+On shared hosting, you no longer need a second backend domain or a backend subdomain. The generated package opens a first-run installer on the same domain, writes the database configuration into Laravel, then runs migrations and seeders from the browser.
+
+If you want the packaged installer to come prefilled with your production database, set these optional keys in `backend/.env` before building:
+
+```env
+DEPLOY_DB_HOST=localhost
+DEPLOY_DB_PORT=3306
+DEPLOY_DB_DATABASE=your_database
+DEPLOY_DB_USERNAME=your_user
+DEPLOY_DB_PASSWORD=your_password
+```
 
 ---
 
@@ -198,6 +223,18 @@ DB_PASSWORD=
 FRONTEND_URL=http://localhost:5173
 FRONTEND_PROD_URL=https://legalaid.ge
 
+# Same-domain production on Hostinger
+# APP_URL=https://www.new.legalaid.ge
+# FRONTEND_URL=https://www.new.legalaid.ge
+# FRONTEND_PROD_URL=https://www.new.legalaid.ge
+
+# Optional packaged installer defaults for production deploys
+# DEPLOY_DB_HOST=localhost
+# DEPLOY_DB_PORT=3306
+# DEPLOY_DB_DATABASE=
+# DEPLOY_DB_USERNAME=
+# DEPLOY_DB_PASSWORD=
+
 # Image Processing
 IMAGE_THUMBNAIL_WIDTH=400
 IMAGE_THUMBNAIL_HEIGHT=280
@@ -221,6 +258,17 @@ IMAGE_DRIVER=gd
 - SQL injection protected via Eloquent ORM
 - XSS: Rich editor content is stored as HTML (sanitize on frontend render)
 - CORS restricted to `FRONTEND_URL` and `FRONTEND_PROD_URL` only
+
+## 🚀 First-Run Hosting Install
+
+For the Hostinger same-domain package:
+
+1. Upload and extract the ZIP into `public_html`.
+2. Open your main domain or `/install`.
+3. Confirm the database settings and run the installer.
+4. Sign in at `/admin` with the seeded admin account, then change the password immediately.
+
+This replaces the older manual flow that required editing `.env` and running `artisan migrate` over SSH.
 
 ---
 

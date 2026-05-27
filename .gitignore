@@ -38,3 +38,5 @@ desktop.ini
 .DS_Store
 .AppleDouble
 .LSOverride
+
+dist/
