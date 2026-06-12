@@ -83,22 +83,46 @@ class Post extends Model
 
     public function getFeaturedImageUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image) ?: $this->generated_post_thumbnail_url;
+        return $this->firstResolvedImageUrl([
+            $this->featured_image,
+            $this->featured_image_single,
+            $this->featured_image_popup,
+            $this->featured_image_thumbnail,
+            $this->og_image,
+        ]) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImageThumbnailUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image_thumbnail ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
+        return $this->firstResolvedImageUrl([
+            $this->featured_image_thumbnail,
+            $this->featured_image,
+            $this->featured_image_single,
+            $this->featured_image_popup,
+            $this->og_image,
+        ]) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImagePopupUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image_popup ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
+        return $this->firstResolvedImageUrl([
+            $this->featured_image_popup,
+            $this->featured_image_single,
+            $this->featured_image,
+            $this->featured_image_thumbnail,
+            $this->og_image,
+        ]) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImageSingleUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image_single ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
+        return $this->firstResolvedImageUrl([
+            $this->featured_image_single,
+            $this->featured_image,
+            $this->featured_image_popup,
+            $this->featured_image_thumbnail,
+            $this->og_image,
+        ]) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImageWebpUrlAttribute(): ?string
@@ -108,7 +132,13 @@ class Post extends Model
 
     public function getOgImageUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->og_image ?: $this->featured_image_single ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
+        return $this->firstResolvedImageUrl([
+            $this->og_image,
+            $this->featured_image_single,
+            $this->featured_image,
+            $this->featured_image_popup,
+            $this->featured_image_thumbnail,
+        ]) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getExtraImageUrlsAttribute(): array
@@ -124,6 +154,19 @@ class Post extends Model
     public function getGeneratedPostThumbnailUrlAttribute(): string
     {
         return url('/generated-post-thumbnails/' . $this->getKey() . '.svg');
+    }
+
+    protected function firstResolvedImageUrl(array $paths): ?string
+    {
+        foreach ($paths as $path) {
+            $url = static::resolveImageUrl($path);
+
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return null;
     }
 
     public static function defaultNewsCategory(): Category

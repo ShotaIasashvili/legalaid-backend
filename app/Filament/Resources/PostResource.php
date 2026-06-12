@@ -142,7 +142,7 @@ class PostResource extends AdminResource
                             ->disk('public')
                             ->directory('posts/raw')
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->maxSize(15360)
+                            ->maxSize(51200)
                             ->maxParallelUploads(1)
                             ->helperText('ატვირთვის შემდეგ ავტომატურად შეიქმნება: thumbnail (400×280), popup (800×500), hero (1200×750), OG (1200×630) და WebP ვერსიები.')
                             ->dehydrated(),
@@ -213,48 +213,36 @@ class PostResource extends AdminResource
                 Forms\Components\Section::make('ფოტო გალერეა')
                     ->description('ეს ფოტოები სიახლის ტექსტის ქვემოთ ცალკე გალერეად გამოჩნდება.')
                     ->schema([
-                        Forms\Components\Repeater::make('extra_images')
+                        Forms\Components\FileUpload::make('extra_images')
                             ->label('გალერეის ფოტოები')
-                            ->schema([
-                                Forms\Components\FileUpload::make('path')
-                                    ->label('ფოტო')
-                                    ->image()
-                                    ->imageEditor()
-                                    ->imageEditorAspectRatios([
-                                        null,
-                                        '16:9',
-                                        '4:3',
-                                        '1:1',
-                                    ])
-                                    ->imageResizeMode('contain')
-                                    ->panelLayout('integrated')
-                                    ->imagePreviewHeight('160')
-                                    ->disk('public')
-                                    ->directory('posts/gallery')
-                                    ->visibility('public')
-                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                                    ->maxSize(10240)
-                                    ->maxParallelUploads(1)
-                                    ->openable()
-                                    ->downloadable()
-                                    ->required()
-                                    ->columnSpanFull(),
-                            ])
-                            ->defaultItems(0)
-                            ->addActionLabel('ფოტოს დამატება')
+                            ->image()
+                            ->multiple()
                             ->reorderable()
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): string => filled($state['path'] ?? null) ? 'გალერეის ფოტო' : 'ახალი ფოტო')
-                            ->afterStateHydrated(function (Forms\Components\Repeater $component, $state): void {
-                                $component->state(
-                                    collect(Post::normalizeImagePaths($state))
-                                        ->map(fn (string $path): array => ['path' => $path])
-                                        ->values()
-                                        ->all()
-                                );
+                            ->appendFiles()
+                            ->openable()
+                            ->downloadable()
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                null,
+                                '16:9',
+                                '4:3',
+                                '1:1',
+                            ])
+                            ->imageResizeMode('contain')
+                            ->panelLayout('grid')
+                            ->imagePreviewHeight('160')
+                            ->disk('public')
+                            ->directory('posts/gallery')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(51200)
+                            ->maxFiles(80)
+                            ->maxParallelUploads(1)
+                            ->afterStateHydrated(function (Forms\Components\FileUpload $component, $state): void {
+                                $component->state(Post::normalizeImagePaths($state));
                             })
                             ->dehydrateStateUsing(fn ($state): array => Post::normalizeImagePaths($state))
-                            ->helperText('დააჭირეთ „ფოტოს დამატება“, ატვირთეთ ფოტო, სურვილის შემთხვევაში დაარედაქტირეთ და გადაალაგეთ.')
+                            ->helperText('შეგიძლიათ ერთად აირჩიოთ რამდენიმე ფოტო. ატვირთვა წავა რიგრიგობით, რომ ფორმა არ გაიჭედოს; შემდეგ შეგიძლიათ გადაალაგოთ და თითოეული ფოტო ცალკე დაარედაქტიროთ.')
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
