@@ -28,7 +28,7 @@ class PublicStorageController extends Controller
         );
 
         return response()->file($resolvedPath, [
-            'Cache-Control' => 'public, max-age=604800',
+            'Cache-Control' => 'public, max-age=300, must-revalidate',
         ]);
     }
 }

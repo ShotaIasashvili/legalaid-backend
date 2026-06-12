@@ -68,7 +68,7 @@ SVG;
 
     return response($svg, 200)
         ->header('Content-Type', 'image/svg+xml; charset=UTF-8')
-        ->header('Cache-Control', 'public, max-age=86400');
+        ->header('Cache-Control', 'no-cache, no-store, must-revalidate');
 })->whereNumber('postId');
 
 Route::get('/news/{slug}', function (string $slug) {
