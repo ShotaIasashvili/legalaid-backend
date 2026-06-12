@@ -44,6 +44,9 @@ class Post extends Model
         'og_image',
         'author',
         'source_url',
+        'video_url',
+        'video_provider',
+        'video_embed_url',
         'extra_images',
         'views',
         'sort_order',
@@ -164,6 +167,41 @@ class Post extends Model
     public function getGeneratedPostThumbnailUrlAttribute(): string
     {
         return url('/generated-post-thumbnails/' . $this->getKey() . '.svg');
+    }
+
+    public static function videoDataFromUrl(?string $url): array
+    {
+        $url = trim((string) $url);
+
+        if ($url === '') {
+            return [
+                'video_url' => null,
+                'video_provider' => null,
+                'video_embed_url' => null,
+            ];
+        }
+
+        if ($youtubeId = static::extractYoutubeId($url)) {
+            return [
+                'video_url' => $url,
+                'video_provider' => 'youtube',
+                'video_embed_url' => "https://www.youtube.com/embed/{$youtubeId}",
+            ];
+        }
+
+        if (static::isFacebookVideoUrl($url)) {
+            return [
+                'video_url' => $url,
+                'video_provider' => 'facebook',
+                'video_embed_url' => 'https://www.facebook.com/plugins/video.php?href=' . rawurlencode($url) . '&show_text=false&width=734',
+            ];
+        }
+
+        return [
+            'video_url' => $url,
+            'video_provider' => null,
+            'video_embed_url' => null,
+        ];
     }
 
     protected function firstResolvedImageUrl(array $paths): ?string
@@ -357,6 +395,37 @@ class Post extends Model
             : config('app.frontend_url');
     }
 
+    protected static function extractYoutubeId(string $url): ?string
+    {
+        if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i', $url, $matches)) {
+            return $matches[1];
+        }
+
+        $query = parse_url($url, PHP_URL_QUERY);
+
+        if (is_string($query)) {
+            parse_str($query, $params);
+            $id = $params['v'] ?? null;
+
+            if (is_string($id) && preg_match('/^[A-Za-z0-9_-]{11}$/', $id)) {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
+    protected static function isFacebookVideoUrl(string $url): bool
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! is_string($host) || ! Str::contains($host, 'facebook.com')) {
+            return false;
+        }
+
+        return Str::contains($url, ['/videos/', '/watch/', 'watch?v=', '/reel/']);
+    }
+
     protected static function boot(): void
     {
         parent::boot();
@@ -372,6 +441,11 @@ class Post extends Model
             if ($post->status === 'published' && blank($post->published_at)) {
                 $post->published_at = now('Asia/Tbilisi');
             }
+
+            $videoData = static::videoDataFromUrl($post->video_url);
+            $post->video_url = $videoData['video_url'];
+            $post->video_provider = $videoData['video_provider'];
+            $post->video_embed_url = $videoData['video_embed_url'];
 
             if ($post->exists) {
                 foreach (static::IMAGE_FIELDS as $field) {

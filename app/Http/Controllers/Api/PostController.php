@@ -126,6 +126,9 @@ class PostController extends Controller
             'is_featured'  => $post->is_featured,
             'views'        => $post->views,
             'sourceUrl'    => $post->source_url,
+            'videoUrl'     => $post->video_url,
+            'videoProvider' => $post->video_provider,
+            'videoEmbedUrl' => $post->video_embed_url,
             // Image URLs
             'featuredImage'          => $post->featured_image_url,
             'featuredImageThumbnail' => $post->featured_image_thumbnail_url,
@@ -142,6 +145,9 @@ class PostController extends Controller
             $data['seo_description'] = $post->seo_description;
             $data['og_image']       = $post->og_image_url;
             $data['source_url']     = $post->source_url;
+            $data['video_url']      = $post->video_url;
+            $data['video_provider'] = $post->video_provider;
+            $data['video_embed_url'] = $post->video_embed_url;
         }
 
         return $data;

@@ -12,6 +12,9 @@ use App\Models\Vacancy;
 use App\Services\AdminDashboardMetrics;
 use App\Services\ImageService;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -37,15 +40,28 @@ class AppServiceProvider extends ServiceProvider
 
     protected function registerDashboardMetricsInvalidation(array $models): void
     {
-        $flushMetrics = static fn () => app(AdminDashboardMetrics::class)->flush();
+        $flushSiteCache = static function (): void {
+            app(AdminDashboardMetrics::class)->flush();
+
+            app()->terminating(static function (): void {
+                try {
+                    Cache::flush();
+                    Artisan::call('view:clear');
+                } catch (\Throwable $exception) {
+                    Log::warning('Automatic cache clear failed.', [
+                        'message' => $exception->getMessage(),
+                    ]);
+                }
+            });
+        };
 
         foreach ($models as $model) {
-            $model::saved($flushMetrics);
-            $model::deleted($flushMetrics);
+            $model::saved($flushSiteCache);
+            $model::deleted($flushSiteCache);
 
             if (in_array(SoftDeletes::class, class_uses_recursive($model), true)) {
-                $model::restored($flushMetrics);
-                $model::forceDeleted($flushMetrics);
+                $model::restored($flushSiteCache);
+                $model::forceDeleted($flushSiteCache);
             }
         }
     }

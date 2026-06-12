@@ -7,10 +7,8 @@ use App\Filament\Resources\PostResource\Pages;
 use App\Models\Post;
 use App\Models\Category;
 use App\Services\AdminDashboardMetrics;
-use App\Services\ImageService;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -103,6 +101,19 @@ class PostResource extends AdminResource
                             ->displayFormat('d/m/Y H:i')
                             ->helperText('გამოქვეყნებული ან დაგეგმილი სიახლე საიტზე გამოჩნდება ამ თარიღის შემდეგ.'),
 
+                        Forms\Components\Actions::make([
+                            Forms\Components\Actions\Action::make('publish_now')
+                                ->label('ახლა')
+                                ->icon('heroicon-o-clock')
+                                ->action(fn (Forms\Set $set) => $set('published_at', now('Asia/Tbilisi')->format('Y-m-d H:i'))),
+                            Forms\Components\Actions\Action::make('today_morning')
+                                ->label('დღეს 09:00')
+                                ->action(fn (Forms\Set $set) => $set('published_at', now('Asia/Tbilisi')->setTime(9, 0)->format('Y-m-d H:i'))),
+                            Forms\Components\Actions\Action::make('today_evening')
+                                ->label('დღეს 18:00')
+                                ->action(fn (Forms\Set $set) => $set('published_at', now('Asia/Tbilisi')->setTime(18, 0)->format('Y-m-d H:i'))),
+                        ])->key('published_at_quick_actions'),
+
                         Forms\Components\Toggle::make('is_featured')
                             ->label('მთავარ გვერდზე გამოტანა')
                             ->default(false),
@@ -125,9 +136,10 @@ class PostResource extends AdminResource
 
                     Forms\Components\Section::make('სურათი / Featured Image')->schema([
 
-                        Forms\Components\FileUpload::make('_raw_image')
+                        Forms\Components\FileUpload::make('featured_image')
                             ->label('ფოტო ატვირთვა / Upload Photo')
                             ->image()
+                            ->deletable(false)
                             ->imageEditor()
                             ->imageEditorAspectRatios([
                                 null,     // Free
@@ -145,11 +157,9 @@ class PostResource extends AdminResource
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->maxSize(51200)
                             ->maxParallelUploads(1)
-                            ->dehydrated(fn ($state): bool => filled($state))
                             ->helperText('ატვირთვის შემდეგ ავტომატურად შეიქმნება: thumbnail (400×280), popup (800×500), hero (1200×750), OG (1200×630) და WebP ვერსიები.'),
 
                         // Hidden fields so Filament carries existing paths through form state
-                        Forms\Components\Hidden::make('featured_image'),
                         Forms\Components\Hidden::make('featured_image_thumbnail'),
                         Forms\Components\Hidden::make('featured_image_popup'),
                         Forms\Components\Hidden::make('featured_image_single'),
@@ -211,6 +221,26 @@ class PostResource extends AdminResource
                     ])->collapsed(),
                 ]),
 
+                Forms\Components\Section::make('ვიდეო')
+                    ->description('YouTube ან Facebook ვიდეოს ბმული დაემატება სიახლის ტექსტის ქვემოთ.')
+                    ->schema([
+                        Forms\Components\TextInput::make('video_url')
+                            ->label('ვიდეოს ბმული')
+                            ->url()
+                            ->placeholder('https://www.youtube.com/watch?v=... ან https://www.facebook.com/.../videos/...')
+                            ->helperText('შეიყვანეთ YouTube ან Facebook ვიდეოს სრული ბმული. Embed ბმული ავტომატურად შეიქმნება.'),
+                        Forms\Components\TextInput::make('video_provider')
+                            ->label('პლატფორმა')
+                            ->readOnly(),
+                        Forms\Components\TextInput::make('video_embed_url')
+                            ->label('Embed URL')
+                            ->readOnly()
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2)
+                    ->collapsed()
+                    ->columnSpanFull(),
+
                 Forms\Components\Section::make('ფოტო გალერეა')
                     ->description('ეს ფოტოები სიახლის ტექსტის ქვემოთ ცალკე გალერეად გამოჩნდება.')
                     ->schema([
@@ -239,7 +269,6 @@ class PostResource extends AdminResource
                             ->maxSize(51200)
                             ->maxFiles(80)
                             ->maxParallelUploads(1)
-                            ->dehydrated(fn ($state): bool => filled($state))
                             ->helperText('შეგიძლიათ ერთად აირჩიოთ რამდენიმე ფოტო. ატვირთვა წავა რიგრიგობით, რომ ფორმა არ გაიჭედოს; შემდეგ შეგიძლიათ გადაალაგოთ და თითოეული ფოტო ცალკე დაარედაქტიროთ.')
                             ->columnSpanFull(),
                     ])
