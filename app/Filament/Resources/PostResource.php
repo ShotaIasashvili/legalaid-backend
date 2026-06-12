@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Str;
 
 class PostResource extends AdminResource
@@ -144,8 +145,8 @@ class PostResource extends AdminResource
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->maxSize(51200)
                             ->maxParallelUploads(1)
-                            ->helperText('ატვირთვის შემდეგ ავტომატურად შეიქმნება: thumbnail (400×280), popup (800×500), hero (1200×750), OG (1200×630) და WebP ვერსიები.')
-                            ->dehydrated(),
+                            ->dehydrated(fn ($state): bool => filled($state))
+                            ->helperText('ატვირთვის შემდეგ ავტომატურად შეიქმნება: thumbnail (400×280), popup (800×500), hero (1200×750), OG (1200×630) და WebP ვერსიები.'),
 
                         // Hidden fields so Filament carries existing paths through form state
                         Forms\Components\Hidden::make('featured_image'),
@@ -238,6 +239,7 @@ class PostResource extends AdminResource
                             ->maxSize(51200)
                             ->maxFiles(80)
                             ->maxParallelUploads(1)
+                            ->dehydrated(fn ($state): bool => filled($state))
                             ->helperText('შეგიძლიათ ერთად აირჩიოთ რამდენიმე ფოტო. ატვირთვა წავა რიგრიგობით, რომ ფორმა არ გაიჭედოს; შემდეგ შეგიძლიათ გადაალაგოთ და თითოეული ფოტო ცალკე დაარედაქტიროთ.')
                             ->columnSpanFull(),
                     ])
@@ -299,24 +301,68 @@ class PostResource extends AdminResource
                 Tables\Filters\Filter::make('is_featured')
                     ->label('Featured')
                     ->query(fn (Builder $query) => $query->where('is_featured', true)),
+                Tables\Filters\TrashedFilter::make()
+                    ->label('არქივი'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\Action::make('publish')
+                    ->label('გამოქვეყნება')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn (Post $record): bool => ! $record->trashed() && $record->status !== 'published')
+                    ->action(fn (Post $record) => $record->update([
+                        'status'       => 'published',
+                        'published_at' => now('Asia/Tbilisi'),
+                    ])),
+                Tables\Actions\Action::make('draft')
+                    ->label('მონახაზი')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->visible(fn (Post $record): bool => ! $record->trashed() && $record->status === 'published')
+                    ->action(fn (Post $record) => $record->update([
+                        'status'       => 'draft',
+                        'published_at' => null,
+                    ])),
+                Tables\Actions\RestoreAction::make()
+                    ->label('აღდგენა'),
+                Tables\Actions\DeleteAction::make()
+                    ->label('არქივში გადატანა')
+                    ->modalHeading('სიახლის არქივში გადატანა')
+                    ->visible(fn (Post $record): bool => ! $record->trashed()),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
                     Tables\Actions\BulkAction::make('publish')
                         ->label('გამოქვეყნება')
                         ->icon('heroicon-o-check')
                         ->action(fn ($records) => $records->each->update([
                             'status'       => 'published',
-                            'published_at' => now(),
+                            'published_at' => now('Asia/Tbilisi'),
                         ])),
+                    Tables\Actions\BulkAction::make('draft')
+                        ->label('მონახაზად გადატანა')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('warning')
+                        ->action(fn ($records) => $records->each->update([
+                            'status'       => 'draft',
+                            'published_at' => null,
+                        ])),
+                    Tables\Actions\RestoreBulkAction::make()
+                        ->label('აღდგენა'),
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('არქივში გადატანა'),
                 ]),
             ])
-            ->defaultSort('published_at', 'desc');
+            ->defaultSort('id', 'desc');
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
     }
 
     public static function getRelations(): array

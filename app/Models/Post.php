@@ -14,6 +14,16 @@ class Post extends Model
 
     public const DEFAULT_NEWS_CATEGORY = 'სიახლეები';
 
+    public const IMAGE_FIELDS = [
+        'featured_image',
+        'featured_image_thumbnail',
+        'featured_image_popup',
+        'featured_image_single',
+        'og_image',
+        'featured_image_webp',
+        'featured_image_thumbnail_webp',
+    ];
+
     protected $fillable = [
         'legacy_id',
         'title',
@@ -361,6 +371,21 @@ class Post extends Model
 
             if ($post->status === 'published' && blank($post->published_at)) {
                 $post->published_at = now('Asia/Tbilisi');
+            }
+
+            if ($post->exists) {
+                foreach (static::IMAGE_FIELDS as $field) {
+                    if ($post->isDirty($field) && blank($post->{$field}) && filled($post->getOriginal($field))) {
+                        $post->{$field} = $post->getOriginal($field);
+                    }
+                }
+
+                $currentExtraImages = static::normalizeImagePaths($post->extra_images ?? []);
+                $originalExtraImages = static::normalizeImagePaths($post->getOriginal('extra_images'));
+
+                if ($post->isDirty('extra_images') && $currentExtraImages === [] && $originalExtraImages !== []) {
+                    $post->extra_images = $originalExtraImages;
+                }
             }
         });
     }
