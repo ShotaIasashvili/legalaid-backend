@@ -34,10 +34,10 @@ class OfficeSeeder extends Seeder
             [
                 'name' => 'თელავის იურიდიული დახმარების ბიურო',
                 'type' => 'bureau', 'region' => 'კახეთი', 'city' => 'თელავი',
-                'head' => 'ლიანა ჭუნიაშვილი',
+                'head' => 'გია ფარადაშვილი',
                 'address' => 'თელავი, ვარდოშვილის ქ. №7',
-                'phone' => '+995 (350) 271538', 'mobile' => '+995 (595) 901707',
-                'email' => 'ltchuniashvili@legalaid.ge',
+                'phone' => '+995 (350) 271538', 'mobile' => '+995 595 90 17 56',
+                'email' => 'gfaradashvili@legalaid.ge',
                 'working_hours' => 'ორ-პარ: 09:00-18:00',
                 'is_specialized' => false, 'is_active' => true, 'sort_order' => 3,
             ],

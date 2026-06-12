@@ -117,6 +117,7 @@ class VacancyResource extends Resource
 
                             Forms\Components\Toggle::make('is_active')
                                 ->label('გამოქვეყნებული')
+                                ->helperText('ჩართეთ, თუ ვაკანსია მზად არის საჯარო გვერდზე გამოსაჩენად. დროის ფანჯარა ქვემოთ დამატებით აკონტროლებს გამოჩენას.')
                                 ->default(true)
                                 ->onColor('success')
                                 ->offColor('danger'),
@@ -155,7 +156,28 @@ class VacancyResource extends Resource
                             Forms\Components\DatePicker::make('deadline')
                                 ->label('განაცხადის ვადა')
                                 ->minDate(today())
+                                ->helperText('საინფორმაციო ვადა კანდიდატებისთვის.')
                                 ->native(false),
+                        ]),
+
+                    Forms\Components\Section::make('გამოქვეყნების პერიოდი')
+                        ->icon('heroicon-o-calendar-days')
+                        ->description('დროები მითითებულია თბილისის დროით. პერიოდის გასვლის შემდეგ ვაკანსია საჯარო გვერდიდან ავტომატურად დაიმალება.')
+                        ->schema([
+                            Forms\Components\DateTimePicker::make('publish_starts_at')
+                                ->label('გამოჩენის დაწყება')
+                                ->timezone('Asia/Tbilisi')
+                                ->seconds(false)
+                                ->native(false)
+                                ->helperText('ცარიელი დატოვების შემთხვევაში გამოჩნდება დაუყოვნებლივ.'),
+
+                            Forms\Components\DateTimePicker::make('publish_ends_at')
+                                ->label('გამოჩენის დასრულება')
+                                ->timezone('Asia/Tbilisi')
+                                ->seconds(false)
+                                ->native(false)
+                                ->afterOrEqual('publish_starts_at')
+                                ->helperText('ამ დროის შემდეგ ვაკანსია /vacancy გვერდზე აღარ გამოჩნდება.'),
                         ]),
 
                     Forms\Components\Section::make('განაცხადი')
@@ -167,9 +189,9 @@ class VacancyResource extends Resource
                                 ->maxLength(255),
 
                             Forms\Components\TextInput::make('application_url')
-                                ->label('განაცხადის URL')
+                                ->label('hr.gov.ge ბმული')
                                 ->url()
-                                ->helperText('vacancy.hr.gov.ge ბმული')
+                                ->helperText('მაგ. https://vacancy.hr.gov.ge/... — საჯარო გვერდზე ღილაკად გამოჩნდება.')
                                 ->maxLength(500),
                         ]),
                 ]),
@@ -244,12 +266,41 @@ class VacancyResource extends Resource
                         $state && \Carbon\Carbon::parse($state)->isPast() ? 'danger' : 'success'
                     ),
 
+                Tables\Columns\TextColumn::make('publish_starts_at')
+                    ->label('იწყება')
+                    ->dateTime('d/m/Y H:i', timezone: 'Asia/Tbilisi')
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('publish_ends_at')
+                    ->label('მთავრდება')
+                    ->dateTime('d/m/Y H:i', timezone: 'Asia/Tbilisi')
+                    ->sortable()
+                    ->color(fn (?string $state): string =>
+                        $state && \Carbon\Carbon::parse($state, 'Asia/Tbilisi')->isPast() ? 'danger' : 'success'
+                    )
+                    ->toggleable(),
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('გამოქვ.')
                     ->boolean()
                     ->trueColor('success')
                     ->falseColor('gray')
                     ->sortable(),
+
+                Tables\Columns\IconColumn::make('currently_visible')
+                    ->label('საიტზე ჩანს')
+                    ->boolean()
+                    ->getStateUsing(function (Vacancy $record): bool {
+                        $now = now('Asia/Tbilisi');
+
+                        return $record->is_active
+                            && $record->status === 'open'
+                            && (! $record->publish_starts_at || $record->publish_starts_at->lte($now))
+                            && (! $record->publish_ends_at || $record->publish_ends_at->gte($now));
+                    })
+                    ->trueColor('success')
+                    ->falseColor('gray'),
 
                 Tables\Columns\TextColumn::make('application_url')
                     ->label('hr.gov.ge')
@@ -283,6 +334,10 @@ class VacancyResource extends Resource
                     ->trueLabel('გამოქვეყნებული')
                     ->falseLabel('დამალული')
                     ->native(false),
+
+                Tables\Filters\Filter::make('currently_visible')
+                    ->label('საიტზე ჩანს ახლა')
+                    ->query(fn ($query) => $query->published()),
             ])
             ->filtersLayout(Tables\Enums\FiltersLayout::AboveContent)
             ->actions([

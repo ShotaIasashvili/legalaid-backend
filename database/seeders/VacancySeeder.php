@@ -23,6 +23,8 @@ class VacancySeeder extends Seeder
             'location'         => 'გურჯაანი',
             'type'             => 'full_time',
             'status'           => 'open',
+            'publish_starts_at' => now('Asia/Tbilisi')->subDay(),
+            'publish_ends_at'   => now('Asia/Tbilisi')->addMonth(),
             'is_active'        => true,
             'sort_order'       => 0,
             'requirements'     => [],

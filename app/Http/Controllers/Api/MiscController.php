@@ -51,44 +51,52 @@ class MiscController extends Controller
 
     public function vacancies(Request $request): JsonResponse
     {
-        $query = Vacancy::where('is_active', true)->orderBy('sort_order');
+        $query = Vacancy::published()->orderBy('sort_order');
 
-        if ($request->boolean('open_only', true)) {
-            $query->open();
-        }
-
-        return response()->json($query->get()->map(fn ($v) => [
-            'id'          => $v->id,
-            'title'       => $v->title,
-            'slug'        => $v->slug,
-            'excerpt'     => $v->excerpt,
-            'department'  => $v->department,
-            'location'    => $v->location,
-            'type'        => $v->type,
-            'status'      => $v->status,
-            'deadline'    => $v->deadline?->format('Y-m-d'),
-        ]));
+        return response()->json([
+            'data' => $query->get()->map(fn ($v) => [
+                'id'                => $v->id,
+                'title'             => $v->title,
+                'slug'              => $v->slug,
+                'excerpt'           => $v->excerpt,
+                'content'           => $v->content,
+                'department'        => $v->department,
+                'location'          => $v->location,
+                'type'              => $v->type,
+                'status'            => $v->status,
+                'deadline'          => $v->deadline?->format('Y-m-d'),
+                'publish_starts_at' => $v->publish_starts_at?->timezone('Asia/Tbilisi')->format('Y-m-d H:i'),
+                'publish_ends_at'   => $v->publish_ends_at?->timezone('Asia/Tbilisi')->format('Y-m-d H:i'),
+                'requirements'      => $v->requirements ?? [],
+                'responsibilities'  => $v->responsibilities ?? [],
+                'contact_email'     => $v->contact_email,
+                'application_url'   => $v->application_url,
+            ]),
+        ]);
     }
 
     public function vacancy(string $slug): JsonResponse
     {
-        $vacancy = Vacancy::where('slug', $slug)->where('is_active', true)->firstOrFail();
+        $vacancy = Vacancy::published()->where('slug', $slug)->firstOrFail();
 
-        return response()->json([
-            'id'               => $vacancy->id,
-            'title'            => $vacancy->title,
-            'slug'             => $vacancy->slug,
-            'content'          => $vacancy->content,
-            'department'       => $vacancy->department,
-            'location'         => $vacancy->location,
-            'type'             => $vacancy->type,
-            'status'           => $vacancy->status,
-            'deadline'         => $vacancy->deadline?->format('Y-m-d'),
-            'requirements'     => $vacancy->requirements ?? [],
-            'responsibilities' => $vacancy->responsibilities ?? [],
-            'contact_email'    => $vacancy->contact_email,
-            'application_url'  => $vacancy->application_url,
-        ]);
+        return response()->json(['data' => [
+            'id'                => $vacancy->id,
+            'title'             => $vacancy->title,
+            'slug'              => $vacancy->slug,
+            'excerpt'           => $vacancy->excerpt,
+            'content'           => $vacancy->content,
+            'department'        => $vacancy->department,
+            'location'          => $vacancy->location,
+            'type'              => $vacancy->type,
+            'status'            => $vacancy->status,
+            'deadline'          => $vacancy->deadline?->format('Y-m-d'),
+            'publish_starts_at' => $vacancy->publish_starts_at?->timezone('Asia/Tbilisi')->format('Y-m-d H:i'),
+            'publish_ends_at'   => $vacancy->publish_ends_at?->timezone('Asia/Tbilisi')->format('Y-m-d H:i'),
+            'requirements'      => $vacancy->requirements ?? [],
+            'responsibilities'  => $vacancy->responsibilities ?? [],
+            'contact_email'     => $vacancy->contact_email,
+            'application_url'   => $vacancy->application_url,
+        ]]);
     }
 
     // ── Videos ───────────────────────────────────────────────────────────────
