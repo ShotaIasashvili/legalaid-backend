@@ -50,11 +50,19 @@ class Post extends Model
 
     public function scopePublished($query)
     {
-        return $query->where('status', 'published')
-                     ->where(function ($q) {
-                         $q->whereNull('published_at')
-                           ->orWhere('published_at', '<=', now());
-                     });
+        return $query->where(function ($query) {
+            $query->where(function ($published) {
+                $published->where('status', 'published')
+                    ->where(function ($date) {
+                        $date->whereNull('published_at')
+                            ->orWhere('published_at', '<=', now());
+                    });
+            })->orWhere(function ($scheduled) {
+                $scheduled->where('status', 'scheduled')
+                    ->whereNotNull('published_at')
+                    ->where('published_at', '<=', now());
+            });
+        });
     }
 
     public function getRouteKeyName(): string
@@ -90,6 +98,22 @@ class Post extends Model
     public function getOgImageUrlAttribute(): ?string
     {
         return static::resolveImageUrl($this->og_image ?: $this->featured_image_single ?: $this->featured_image);
+    }
+
+    public function getExtraImageUrlsAttribute(): array
+    {
+        return collect($this->extra_images ?? [])
+            ->map(function ($image): ?string {
+                if (is_array($image)) {
+                    $image = $image['path'] ?? $image['url'] ?? $image['src'] ?? null;
+                }
+
+                return is_string($image) ? static::resolveImageUrl($image) : null;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public static function resolveImageUrl(?string $path): ?string

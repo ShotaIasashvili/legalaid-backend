@@ -23,6 +23,7 @@ Route::prefix('v1')->group(function () {
     // ── News / Posts ──────────────────────────────────────────────────────
     Route::get('/posts',          [PostController::class, 'index']);
     Route::get('/posts/latest',   [PostController::class, 'latest']);
+    Route::get('/posts/archive',  [PostController::class, 'archive']);
     Route::get('/posts/{slug}',   [PostController::class, 'show']);
 
     // ── Services ──────────────────────────────────────────────────────────

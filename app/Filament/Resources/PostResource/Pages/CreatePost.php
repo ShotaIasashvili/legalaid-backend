@@ -14,16 +14,18 @@ class CreatePost extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        if (!empty($data['_raw_image'])) {
-            $data = $this->processImage($data);
+        $rawPath = $this->uploadedPath($data['_raw_image'] ?? null);
+
+        if ($rawPath !== null) {
+            $data = $this->processImage($data, $rawPath);
         }
+
         unset($data['_raw_image']);
         return $data;
     }
 
-    private function processImage(array $data): array
+    private function processImage(array $data, string $rawPath): array
     {
-        $rawPath = $data['_raw_image'];
         $fullPath = Storage::disk('public')->path($rawPath);
 
         if (!file_exists($fullPath)) {
@@ -51,5 +53,26 @@ class CreatePost extends CreateRecord
         $data['featured_image_thumbnail_webp'] = $paths['thumbnail_webp'] ?? null;
 
         return $data;
+    }
+
+    private function uploadedPath(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            $path = trim($value);
+
+            return $path !== '' ? $path : null;
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $path = $this->uploadedPath($item);
+
+                if ($path !== null) {
+                    return $path;
+                }
+            }
+        }
+
+        return null;
     }
 }

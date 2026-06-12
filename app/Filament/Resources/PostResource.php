@@ -97,7 +97,10 @@ class PostResource extends AdminResource
                         Forms\Components\DateTimePicker::make('published_at')
                             ->label('გამოქვეყნების თარიღი')
                             ->native(false)
-                            ->displayFormat('d/m/Y H:i'),
+                            ->seconds(false)
+                            ->timezone('Asia/Tbilisi')
+                            ->displayFormat('d/m/Y H:i')
+                            ->helperText('გამოქვეყნებული ან დაგეგმილი სიახლე საიტზე გამოჩნდება ამ თარიღის შემდეგ.'),
 
                         Forms\Components\Toggle::make('is_featured')
                             ->label('მთავარ გვერდზე გამოტანა')
@@ -138,9 +141,9 @@ class PostResource extends AdminResource
                             ->directory('posts/raw')
                             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                             ->maxSize(15360)
+                            ->maxParallelUploads(1)
                             ->helperText('ატვირთვის შემდეგ ავტომატურად შეიქმნება: thumbnail (400×280), popup (800×500), hero (1200×750), OG (1200×630) და WebP ვერსიები.')
-                            ->dehydrated(false)
-                            ->live(),
+                            ->dehydrated(),
 
                         // Hidden fields so Filament carries existing paths through form state
                         Forms\Components\Hidden::make('featured_image'),
@@ -204,6 +207,39 @@ class PostResource extends AdminResource
                         Forms\Components\TextInput::make('source_url')->label('წყარო URL')->url(),
                     ])->collapsed(),
                 ]),
+
+                Forms\Components\Section::make('ფოტო გალერეა')
+                    ->description('ეს ფოტოები სიახლის ტექსტის ქვემოთ ცალკე გალერეად გამოჩნდება.')
+                    ->schema([
+                        Forms\Components\FileUpload::make('extra_images')
+                            ->label('გალერეის ფოტოები')
+                            ->image()
+                            ->multiple()
+                            ->reorderable()
+                            ->appendFiles()
+                            ->openable()
+                            ->downloadable()
+                            ->imageEditor()
+                            ->imageEditorAspectRatios([
+                                null,
+                                '16:9',
+                                '4:3',
+                                '1:1',
+                            ])
+                            ->panelLayout('grid')
+                            ->imagePreviewHeight('140')
+                            ->disk('public')
+                            ->directory('posts/gallery')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(10240)
+                            ->maxFiles(40)
+                            ->maxParallelUploads(2)
+                            ->helperText('შეგიძლიათ რამდენიმე ფოტო ატვირთოთ, გადაალაგოთ და ცალკე დაარედაქტიროთ. ნაკლები პარალელური ატვირთვა ფორმას უფრო სტაბილურს და სწრაფს ხდის.')
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull()
+                    ->collapsed(),
             ]),
         ]);
     }

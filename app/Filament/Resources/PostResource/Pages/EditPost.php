@@ -21,13 +21,9 @@ class EditPost extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (!empty($data['_raw_image'])) {
-            // Delete old images
-            if ($this->record->featured_image) {
-                app(ImageService::class)->deleteAll($this->record->featured_image);
-            }
+        $rawPath = $this->uploadedPath($data['_raw_image'] ?? null);
 
-            $rawPath  = $data['_raw_image'];
+        if ($rawPath !== null) {
             $fullPath = Storage::disk('public')->path($rawPath);
 
             if (file_exists($fullPath)) {
@@ -40,6 +36,11 @@ class EditPost extends EditRecord
                 );
 
                 $paths = app(ImageService::class)->processUpload($file, 'news');
+
+                if ($this->record->featured_image && Storage::disk('public')->exists($this->record->featured_image)) {
+                    app(ImageService::class)->deleteAll($this->record->featured_image);
+                }
+
                 Storage::disk('public')->delete($rawPath);
 
                 $data['featured_image']                = $paths['original'];
@@ -54,5 +55,26 @@ class EditPost extends EditRecord
 
         unset($data['_raw_image']);
         return $data;
+    }
+
+    private function uploadedPath(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            $path = trim($value);
+
+            return $path !== '' ? $path : null;
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $path = $this->uploadedPath($item);
+
+                if ($path !== null) {
+                    return $path;
+                }
+            }
+        }
+
+        return null;
     }
 }
