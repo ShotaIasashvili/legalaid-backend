@@ -12,6 +12,8 @@ class Post extends Model
 {
     use SoftDeletes;
 
+    public const DEFAULT_NEWS_CATEGORY = 'სიახლეები';
+
     protected $fillable = [
         'legacy_id',
         'title',
@@ -43,6 +45,15 @@ class Post extends Model
         'extra_images' => 'array',
     ];
 
+    public function setExtraImagesAttribute(mixed $value): void
+    {
+        $images = static::normalizeImagePaths($value);
+
+        $this->attributes['extra_images'] = $images === []
+            ? null
+            : json_encode($images, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);
@@ -72,22 +83,22 @@ class Post extends Model
 
     public function getFeaturedImageUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image);
+        return static::resolveImageUrl($this->featured_image) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImageThumbnailUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image_thumbnail ?: $this->featured_image);
+        return static::resolveImageUrl($this->featured_image_thumbnail ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImagePopupUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image_popup ?: $this->featured_image);
+        return static::resolveImageUrl($this->featured_image_popup ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImageSingleUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->featured_image_single ?: $this->featured_image);
+        return static::resolveImageUrl($this->featured_image_single ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getFeaturedImageWebpUrlAttribute(): ?string
@@ -97,23 +108,106 @@ class Post extends Model
 
     public function getOgImageUrlAttribute(): ?string
     {
-        return static::resolveImageUrl($this->og_image ?: $this->featured_image_single ?: $this->featured_image);
+        return static::resolveImageUrl($this->og_image ?: $this->featured_image_single ?: $this->featured_image) ?: $this->generated_post_thumbnail_url;
     }
 
     public function getExtraImageUrlsAttribute(): array
     {
-        return collect($this->extra_images ?? [])
-            ->map(function ($image): ?string {
-                if (is_array($image)) {
-                    $image = $image['path'] ?? $image['url'] ?? $image['src'] ?? null;
-                }
-
-                return is_string($image) ? static::resolveImageUrl($image) : null;
-            })
+        return collect(static::normalizeImagePaths($this->extra_images ?? []))
+            ->map(fn (string $image): ?string => static::resolveImageUrl($image))
             ->filter()
             ->unique()
             ->values()
             ->all();
+    }
+
+    public function getGeneratedPostThumbnailUrlAttribute(): string
+    {
+        return url('/generated-post-thumbnails/' . $this->getKey() . '.svg');
+    }
+
+    public static function defaultNewsCategory(): Category
+    {
+        return Category::firstOrCreate(
+            ['name' => static::DEFAULT_NEWS_CATEGORY, 'type' => 'news'],
+            ['slug' => 'news']
+        );
+    }
+
+    public function ensureDefaultNewsCategory(): void
+    {
+        if (! $this->exists || $this->categories()->exists()) {
+            return;
+        }
+
+        $this->categories()->syncWithoutDetaching([static::defaultNewsCategory()->id]);
+    }
+
+    public static function normalizeImagePaths(mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if ($value instanceof \Illuminate\Support\Collection) {
+            $value = $value->all();
+        }
+
+        if (is_string($value)) {
+            $path = trim($value);
+
+            if ($path === '') {
+                return [];
+            }
+
+            if (Str::startsWith($path, ['[', '{'])) {
+                $decoded = json_decode($path, true);
+
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return static::normalizeImagePaths($decoded);
+                }
+            }
+
+            return [static::normalizeStoredImagePath($path)];
+        }
+
+        if (! is_array($value)) {
+            return [];
+        }
+
+        $paths = [];
+
+        foreach ($value as $item) {
+            if (is_array($item)) {
+                $directPath = $item['path'] ?? $item['url'] ?? $item['src'] ?? $item['file'] ?? null;
+
+                if ($directPath !== null) {
+                    array_push($paths, ...static::normalizeImagePaths($directPath));
+                    continue;
+                }
+
+                array_push($paths, ...static::normalizeImagePaths(array_values($item)));
+                continue;
+            }
+
+            array_push($paths, ...static::normalizeImagePaths($item));
+        }
+
+        return collect($paths)
+            ->map(fn (string $path): string => static::normalizeStoredImagePath($path))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected static function normalizeStoredImagePath(string $path): string
+    {
+        if (filter_var($path, FILTER_VALIDATE_URL) !== false || Str::startsWith($path, ['//', 'data:'])) {
+            return $path;
+        }
+
+        return ltrim(str_replace('\\', '/', $path), '/');
     }
 
     public static function resolveImageUrl(?string $path): ?string
@@ -130,8 +224,8 @@ class Post extends Model
         $frontendBaseUrl = static::frontendBaseUrl();
 
         if (static::isLegacyPublicAsset($normalizedPath)) {
-            if (static::legacyPublicAssetPath($normalizedPath) !== null) {
-                return url('/legacy-post-assets/' . $normalizedPath);
+            if (static::frontendPublicAssetPath($normalizedPath) !== null || static::legacyPublicAssetPath($normalizedPath) !== null) {
+                return url('/' . $normalizedPath);
             }
 
             if (filled($frontendBaseUrl)) {
@@ -147,7 +241,11 @@ class Post extends Model
             return asset($normalizedPath);
         }
 
-        return asset($normalizedPath);
+        if (static::frontendPublicAssetPath($normalizedPath) !== null) {
+            return url('/' . $normalizedPath);
+        }
+
+        return null;
     }
 
     public static function legacyPublicAssetPath(string $path): ?string
@@ -174,6 +272,26 @@ class Post extends Model
         return $resolvedPath;
     }
 
+    public static function frontendPublicAssetPath(string $path): ?string
+    {
+        $normalizedPath = ltrim(str_replace('\\', '/', $path), '/');
+        $candidateRoot = dirname(base_path());
+        $resolvedRoot = realpath($candidateRoot);
+
+        if ($resolvedRoot === false) {
+            return null;
+        }
+
+        $candidatePath = $resolvedRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalizedPath);
+        $resolvedPath = realpath($candidatePath);
+
+        if ($resolvedPath === false || ! str_starts_with($resolvedPath, $resolvedRoot . DIRECTORY_SEPARATOR) || ! is_file($resolvedPath)) {
+            return null;
+        }
+
+        return $resolvedPath;
+    }
+
     protected static function isLegacyPublicAsset(string $path): bool
     {
         return Str::startsWith($path, 'news-assets/');
@@ -190,12 +308,16 @@ class Post extends Model
     {
         parent::boot();
 
-        static::creating(function (Post $post) {
+        static::saving(function (Post $post) {
             if (empty($post->slug)) {
                 $post->slug = Str::slug($post->title);
             }
             if (empty($post->excerpt) && $post->content) {
                 $post->excerpt = Str::limit(strip_tags($post->content), 200);
+            }
+
+            if ($post->status === 'published' && blank($post->published_at)) {
+                $post->published_at = now('Asia/Tbilisi');
             }
         });
     }

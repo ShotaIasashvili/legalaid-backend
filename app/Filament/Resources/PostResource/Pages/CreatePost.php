@@ -24,6 +24,11 @@ class CreatePost extends CreateRecord
         return $data;
     }
 
+    protected function afterCreate(): void
+    {
+        $this->record->ensureDefaultNewsCategory();
+    }
+
     private function processImage(array $data, string $rawPath): array
     {
         $fullPath = Storage::disk('public')->path($rawPath);

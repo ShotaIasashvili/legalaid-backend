@@ -19,6 +19,58 @@ Route::get('/up', function () {
     return response()->json(['status' => 'ok', 'time' => now()->toIso8601String()]);
 });
 
+Route::get('/generated-post-thumbnails/{postId}.svg', function (int $postId) {
+    $post = Post::withTrashed()->findOrFail($postId);
+    $title = trim($post->title ?: 'სიახლე');
+    $words = preg_split('/\s+/u', $title) ?: [];
+    $lines = [];
+    $currentLine = '';
+
+    foreach ($words as $word) {
+        $candidate = trim($currentLine . ' ' . $word);
+
+        if (mb_strlen($candidate) > 34 && $currentLine !== '') {
+            $lines[] = $currentLine;
+            $currentLine = $word;
+            continue;
+        }
+
+        $currentLine = $candidate;
+    }
+
+    if ($currentLine !== '') {
+        $lines[] = $currentLine;
+    }
+
+    $lines = array_slice($lines ?: [$title], 0, 4);
+    $startY = 330 - ((count($lines) - 1) * 36);
+    $text = collect($lines)
+        ->map(fn (string $line, int $index): string => '<text x="96" y="' . ($startY + ($index * 72)) . '" font-size="52" font-weight="700" fill="#ffffff">' . e($line) . '</text>')
+        ->implode("\n");
+    $escapedTitle = e($title);
+
+    $svg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750" role="img" aria-label="{$escapedTitle}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#941613"/>
+      <stop offset="58%" stop-color="#24324a"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="750" fill="url(#bg)"/>
+  <rect x="64" y="64" width="1072" height="622" rx="28" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.22)" stroke-width="2"/>
+  <text x="96" y="150" font-size="28" font-weight="700" fill="rgba(255,255,255,0.72)">იურიდიული დახმარების სამსახური</text>
+  {$text}
+  <rect x="96" y="610" width="160" height="8" rx="4" fill="#ffffff" opacity="0.72"/>
+</svg>
+SVG;
+
+    return response($svg, 200)
+        ->header('Content-Type', 'image/svg+xml; charset=UTF-8')
+        ->header('Cache-Control', 'public, max-age=86400');
+})->whereNumber('postId');
+
 Route::get('/news/{slug}', function (string $slug) {
     $indexPath = dirname(base_path()) . DIRECTORY_SEPARATOR . 'index.html';
 

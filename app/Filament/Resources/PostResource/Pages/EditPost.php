@@ -57,6 +57,11 @@ class EditPost extends EditRecord
         return $data;
     }
 
+    protected function afterSave(): void
+    {
+        $this->record->ensureDefaultNewsCategory();
+    }
+
     private function uploadedPath(mixed $value): ?string
     {
         if (is_string($value)) {

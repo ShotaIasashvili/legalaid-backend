@@ -34,6 +34,9 @@ class PostSeeder extends Seeder
         $bar->start();
 
         foreach ($posts as $data) {
+            $galleryImages = $data['extraImages'] ?? $data['extra_images'] ?? $data['images'] ?? null;
+            $featuredImage = isset($data['featuredImage']) ? ltrim($data['featuredImage'], '/') : null;
+
             $post = Post::updateOrCreate(
                 ['legacy_id' => $data['id']],
                 [
@@ -44,13 +47,12 @@ class PostSeeder extends Seeder
                     'status'          => 'published',
                     'published_at'    => isset($data['date']) ? Carbon::parse($data['date']) : null,
                     'source_url'      => $data['sourceUrl'] ?? null,
-                    'extra_images'    => !empty($data['extraImages']) ? $data['extraImages'] : null,
-                    'featured_image'  => isset($data['featuredImage'])
-                        ? ltrim($data['featuredImage'], '/')
-                        : null,
-                    'featured_image_thumbnail' => isset($data['featuredImage'])
-                        ? ltrim($data['featuredImage'], '/')
-                        : null,
+                    'extra_images'    => !empty($galleryImages) ? $galleryImages : null,
+                    'featured_image'  => $featuredImage,
+                    'featured_image_thumbnail' => $featuredImage,
+                    'featured_image_popup' => $featuredImage,
+                    'featured_image_single' => $featuredImage,
+                    'og_image' => $featuredImage,
                 ]
             );
 
@@ -66,6 +68,8 @@ class PostSeeder extends Seeder
                 }
                 $post->categories()->syncWithoutDetaching($categoryIds);
             }
+
+            $post->ensureDefaultNewsCategory();
 
             $bar->advance();
         }

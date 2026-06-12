@@ -113,6 +113,8 @@ class PostResource extends AdminResource
                             ->relationship('categories', 'name')
                             ->multiple()
                             ->preload()
+                            ->default(fn () => [Post::defaultNewsCategory()->id])
+                            ->helperText('თუ კატეგორია არ აირჩევა, სიახლე ავტომატურად დაემატება კატეგორიას: სიახლეები.')
                             ->createOptionForm([
                                 Forms\Components\TextInput::make('name')->required(),
                                 Forms\Components\TextInput::make('slug')->required(),
@@ -211,35 +213,51 @@ class PostResource extends AdminResource
                 Forms\Components\Section::make('ფოტო გალერეა')
                     ->description('ეს ფოტოები სიახლის ტექსტის ქვემოთ ცალკე გალერეად გამოჩნდება.')
                     ->schema([
-                        Forms\Components\FileUpload::make('extra_images')
+                        Forms\Components\Repeater::make('extra_images')
                             ->label('გალერეის ფოტოები')
-                            ->image()
-                            ->multiple()
-                            ->reorderable()
-                            ->appendFiles()
-                            ->openable()
-                            ->downloadable()
-                            ->imageEditor()
-                            ->imageEditorAspectRatios([
-                                null,
-                                '16:9',
-                                '4:3',
-                                '1:1',
+                            ->schema([
+                                Forms\Components\FileUpload::make('path')
+                                    ->label('ფოტო')
+                                    ->image()
+                                    ->imageEditor()
+                                    ->imageEditorAspectRatios([
+                                        null,
+                                        '16:9',
+                                        '4:3',
+                                        '1:1',
+                                    ])
+                                    ->imageResizeMode('contain')
+                                    ->panelLayout('integrated')
+                                    ->imagePreviewHeight('160')
+                                    ->disk('public')
+                                    ->directory('posts/gallery')
+                                    ->visibility('public')
+                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                    ->maxSize(10240)
+                                    ->maxParallelUploads(1)
+                                    ->openable()
+                                    ->downloadable()
+                                    ->required()
+                                    ->columnSpanFull(),
                             ])
-                            ->panelLayout('grid')
-                            ->imagePreviewHeight('140')
-                            ->disk('public')
-                            ->directory('posts/gallery')
-                            ->visibility('public')
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->maxSize(10240)
-                            ->maxFiles(40)
-                            ->maxParallelUploads(2)
-                            ->helperText('შეგიძლიათ რამდენიმე ფოტო ატვირთოთ, გადაალაგოთ და ცალკე დაარედაქტიროთ. ნაკლები პარალელური ატვირთვა ფორმას უფრო სტაბილურს და სწრაფს ხდის.')
+                            ->defaultItems(0)
+                            ->addActionLabel('ფოტოს დამატება')
+                            ->reorderable()
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): string => filled($state['path'] ?? null) ? 'გალერეის ფოტო' : 'ახალი ფოტო')
+                            ->afterStateHydrated(function (Forms\Components\Repeater $component, $state): void {
+                                $component->state(
+                                    collect(Post::normalizeImagePaths($state))
+                                        ->map(fn (string $path): array => ['path' => $path])
+                                        ->values()
+                                        ->all()
+                                );
+                            })
+                            ->dehydrateStateUsing(fn ($state): array => Post::normalizeImagePaths($state))
+                            ->helperText('დააჭირეთ „ფოტოს დამატება“, ატვირთეთ ფოტო, სურვილის შემთხვევაში დაარედაქტირეთ და გადაალაგეთ.')
                             ->columnSpanFull(),
                     ])
-                    ->columnSpanFull()
-                    ->collapsed(),
+                    ->columnSpanFull(),
             ]),
         ]);
     }
