@@ -238,10 +238,6 @@ class PostResource extends AdminResource
                             ->maxSize(51200)
                             ->maxFiles(80)
                             ->maxParallelUploads(1)
-                            ->afterStateHydrated(function (Forms\Components\FileUpload $component, $state): void {
-                                $component->state(Post::normalizeImagePaths($state));
-                            })
-                            ->dehydrateStateUsing(fn ($state): array => Post::normalizeImagePaths($state))
                             ->helperText('შეგიძლიათ ერთად აირჩიოთ რამდენიმე ფოტო. ატვირთვა წავა რიგრიგობით, რომ ფორმა არ გაიჭედოს; შემდეგ შეგიძლიათ გადაალაგოთ და თითოეული ფოტო ცალკე დაარედაქტიროთ.')
                             ->columnSpanFull(),
                     ])
