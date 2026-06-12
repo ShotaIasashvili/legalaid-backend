@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Livewire\SafeFilamentNotifications;
 use App\Models\Document;
 use App\Models\LegalQuestion;
 use App\Models\Office;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->app->booted(static function (): void {
+            Livewire::component('notifications', SafeFilamentNotifications::class);
+        });
+
         $this->registerDashboardMetricsInvalidation([
             Document::class,
             LegalQuestion::class,
